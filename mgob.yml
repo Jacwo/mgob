@@ -23,20 +23,20 @@ metadata:
 data:
   mongobak.yml: |
     target:
-      host: "172.17.8.115"
+      host: ""
       port: 27017
       database: ""
       username: "admin"
-      password: "abc123Aa"
+      password: ""
     scheduler:
       cron: "*/2 * * * *"
       retention: 5
       timeout: 60
     sftp:
-      host: 172.17.8.79
+      host: 
       port: 22
-      username: sftpUser
-      password: shyfzx@163
+      username:
+      password: 
       # you can also specify path to a private key and a passphrase
       #private_key: /etc/ssh/ssh_host_rsa_key
       #passphrase: secretpassphrase
@@ -75,10 +75,10 @@ spec:
       labels:
         service: mgob
     spec:
-      nodeName: 172.17.8.114
+      nodeName: 
       hostNetwork: true
       hostAliases:
-      - ip: "172.17.8.114"
+      - ip: ""
         hostnames:
         - "mgob"
       containers:
