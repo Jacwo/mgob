@@ -1,0 +1,122 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mgob
+  namespace: ruijie-sourceid
+spec:
+  selector:
+    service: mgob
+  ports:
+  - port: 8090
+    targetPort: 8090
+  clusterIP: None
+
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  labels:
+    service: mgob
+  name: mgob-config
+  namespace: ruijie-sourceid
+data:
+  mongobak.yml: |
+    target:
+      host: "172.17.8.115"
+      port: 27017
+      database: ""
+      username: "admin"
+      password: "abc123Aa"
+    scheduler:
+      cron: "*/2 * * * *"
+      retention: 5
+      timeout: 60
+    sftp:
+      host: 172.17.8.79
+      port: 22
+      username: sftpUser
+      password: shyfzx@163
+      # you can also specify path to a private key and a passphrase
+      #private_key: /etc/ssh/ssh_host_rsa_key
+      #passphrase: secretpassphrase
+      # dir must exist on the SFTP server
+      dir: default
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mgob-node
+  namespace: ruijie-sourceid
+spec:
+  type: NodePort
+  ports:
+    - port: 8090
+      targetPort: 8090
+      nodePort: 30090
+  selector:
+    service: mgob
+
+---
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: mgob
+  namespace: ruijie-sourceid
+spec:
+  serviceName: mgob
+  replicas: 1
+  selector:
+    matchLabels:
+      service: mgob
+  template:
+    metadata:
+      labels:
+        service: mgob
+    spec:
+      nodeName: 172.17.8.114
+      hostNetwork: true
+      hostAliases:
+      - ip: "172.17.8.114"
+        hostnames:
+        - "mgob"
+      containers:
+      - name: mgob
+        image: stefanprodan/mgob:latest
+        imagePullPolicy: IfNotPresent
+        resources:
+            limits:
+               cpu: 1
+               memory: 1Gi
+            requests:
+               cpu: 1
+               memory: 1Gi
+        ports:
+          - containerPort: 8090
+        volumeMounts:
+          - name: mgob-storage
+            mountPath: /storage
+          - name: mgob-tmp
+            mountPath: /tmp
+          - mountPath: /config/mongobak.yml
+            name: mgob-config
+            subPath: mongobak.yml
+          - name: date-config
+            mountPath: /etc/localtime 
+      volumes:
+        - name: mgob-storage
+          hostPath:
+           path: /ruijie/ruijie-sourceid/mgob/storage
+        - name: date-config
+          hostPath:
+            path: /etc/localtime
+        - name: mgob-tmp
+          hostPath:
+           path: /ruijie/ruijie-sourceid/mgob/tmp
+        - name: mgob-config
+          configMap:
+            name: mgob-config
+            items:
+              - key: mongobak.yml
+                path: mongobak.yml
