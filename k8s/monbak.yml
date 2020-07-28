@@ -1,0 +1,107 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mgob
+  namespace: namespace
+spec:
+  selector:
+    service: mgob
+  ports:
+  - port: 8090
+    targetPort: 8090
+  clusterIP: None
+
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  labels:
+    service: mgob
+  name: mgob-config
+  namespace: namespace
+data:
+  mongobak.yml: |
+    target:
+      host: "host"
+      port: 27017
+      database: ""
+      username: "username"
+      password: "password"
+    scheduler:
+      cron: "* */2 * * *"
+      retention: 10
+      timeout: 60
+    sftp:
+      host: host
+      port: 22
+      username: jacwo
+      password: pwd
+      # you can also specify path to a private key and a passphrase
+      #private_key: /etc/ssh/ssh_host_rsa_key
+      #passphrase: secretpassphrase
+      # dir must exist on the SFTP server
+      dir: upload
+     
+---
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: mgob
+  namespace: namespace
+spec:
+  serviceName: mgob
+  replicas: 1
+  selector:
+    matchLabels:
+      service: mgob
+  template:
+    metadata:
+      labels:
+        service: mgob
+    spec:
+      nodeName: nodeName
+      hostNetwork: true
+      hostAliases:
+      - ip: "ip"
+        hostnames:
+        - "mgob"
+      containers:
+      - name: mgob
+        image: */mgob:1.0
+        imagePullPolicy: IfNotPresent
+        resources:
+            limits:
+               cpu: 1
+               memory: 512Mi
+            requests:
+               cpu: 1
+               memory: 256Mi
+        ports:
+          - containerPort: 8090
+        volumeMounts:
+          - name: mgob-storage
+            mountPath: /storage
+          - name: mgob-tmp
+            mountPath: /tmp
+          - mountPath: /config/mongobak.yml
+            name: mgob-config
+            subPath: mongobak.yml
+          - name: date-config
+            mountPath: /etc/localtime 
+      volumes:
+        - name: mgob-storage
+          hostPath:
+           path: /mgob/storage
+        - name: date-config
+          hostPath:
+            path: /etc/localtime
+        - name: mgob-tmp
+          hostPath:
+           path: /mgob/tmp
+        - name: mgob-config
+          configMap:
+            name: mgob-config
+            items:
+              - key: mongobak.yml
+                path: mongobak.yml
